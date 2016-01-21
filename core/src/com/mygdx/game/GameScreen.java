@@ -29,7 +29,7 @@ public class GameScreen implements Screen{
     private Array<Textbook> textbooks;
     private Rectangle beer;
 
-    private long lastSpawnTime;
+    private long lastSpawnTime = TimeUtils.nanoTime();
 
     public static final int SCREEN_WIDTH = 960;
     public static final int SCREEN_HEIGHT = 640;
@@ -39,6 +39,8 @@ public class GameScreen implements Screen{
 
     public static final int TEXTBOOK_WIDTH = 200;
     public static final int TEXTBOOK_HEIGHT = 150;
+
+    final int N_TEXTBOOKS = 5;
 
     private long score;
 
@@ -66,10 +68,9 @@ public class GameScreen implements Screen{
         beer.width = BEER_WIDTH;
         beer.height = BEER_HEIGHT;
         textbookTextures = new ArrayList<Texture>();
-        for (FileHandle f : Gdx.files.internal("textbooks").list()) {
-            textbookTextures.add(new Texture(f.path()));
+        for (int i = 0; i < N_TEXTBOOKS; i++) {
+            textbookTextures.add(new Texture("textbooks/textbook" + i + ".jpg"));
         }
-
         textbooks = new Array<Textbook>();
     }
 
@@ -83,7 +84,7 @@ public class GameScreen implements Screen{
 
     @Override
     public void render(float delta) {
-        Gdx.gl.glClearColor(0, 0, 0.2f, 1);
+        Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         // tell the camera to update its matrices.
@@ -125,7 +126,8 @@ public class GameScreen implements Screen{
             textbook.height = TEXTBOOK_HEIGHT;
             lastSpawnTime = TimeUtils.nanoTime();
             long speed = score * 10 + MathUtils.random(150, 300);
-            textbooks.add(new Textbook(textbook, textbookTextures.get(MathUtils.random(0, textbookTextures.size() - 1)), speed));
+            Textbook textbook1 = new Textbook(textbook, textbookTextures.get(MathUtils.random(0, textbookTextures.size() - 1)), speed);
+            textbooks.add(textbook1);
         }
 
         Iterator<Textbook> iter = textbooks.iterator();
@@ -140,6 +142,7 @@ public class GameScreen implements Screen{
             if (raindrop.overlaps(beer)) {
                 // TOOD: game over!
                 game.setScreen(game.menuScreen);
+                break;
             }
         }
 
