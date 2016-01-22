@@ -2,6 +2,7 @@ package com.mygdx.game;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
@@ -9,6 +10,8 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.TimeUtils;
 
@@ -22,6 +25,7 @@ import java.util.List;
  */
 public class GameScreen implements Screen{
 
+    private static final long REQUIRED_SCORE = 75;
     private final MyGdxGame game;
     private final OrthographicCamera camera;
     private Texture beerImage;
@@ -40,9 +44,16 @@ public class GameScreen implements Screen{
     public static final int TEXTBOOK_WIDTH = 200;
     public static final int TEXTBOOK_HEIGHT = 150;
 
-    final int N_TEXTBOOKS = 5;
+    final int N_TEXTBOOKS = 15;
+
+    public static final int BEER_SPEED = 400;
 
     private long score;
+
+    private final Vector3 touchPoint = new Vector3();
+    private boolean dragging = false;
+    private boolean draggingLeft = false;
+
 
     public static class Textbook {
 
@@ -103,11 +114,10 @@ public class GameScreen implements Screen{
             game.batch.draw(raindrop.text, raindrop.rect.x, raindrop.rect.y, raindrop.rect.width, raindrop.rect.height);
         }
         // TODO: need mobile controls
-        if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
-            beer.x -= 200 * Gdx.graphics.getDeltaTime();
-        }
-        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
-            beer.x += 200 * Gdx.graphics.getDeltaTime();
+        if ((dragging && draggingLeft) || Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
+            beer.x -= BEER_SPEED * Gdx.graphics.getDeltaTime();
+        } else if ((dragging && !draggingLeft) || Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
+            beer.x += BEER_SPEED * Gdx.graphics.getDeltaTime();
         }
         // make sure the bucket stays within the screen bounds
         beer.x = Math.max(beer.x, 0);
@@ -115,17 +125,70 @@ public class GameScreen implements Screen{
             beer.x = SCREEN_WIDTH - BEER_WIDTH;
         }
 
+        Gdx.input.setInputProcessor(new InputProcessor() {
+            @Override
+            public boolean keyDown(int keycode) {
+                return false;
+            }
+
+            @Override
+            public boolean keyUp(int keycode) {
+                return false;
+            }
+
+            @Override
+            public boolean keyTyped(char character) {
+                return false;
+            }
+
+            @Override
+            public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+                if (button != Input.Buttons.LEFT || pointer > 0) return false;
+                camera.unproject(touchPoint.set(screenX, screenY, 0));
+                dragDir();
+                dragging = true;
+                return true;
+            }
+
+            private void dragDir() {
+                draggingLeft = touchPoint.x < SCREEN_WIDTH / 2;
+            }
+
+            @Override
+            public boolean touchUp(int screenX, int screenY, int pointer, int button) {
+                dragging = false;
+                return false;
+            }
+
+            @Override
+            public boolean touchDragged(int screenX, int screenY, int pointer) {
+                camera.unproject(touchPoint.set(screenX, screenY, 0));
+                dragDir();
+                return false;
+            }
+
+            @Override
+            public boolean mouseMoved(int screenX, int screenY) {
+                return false;
+            }
+
+            @Override
+            public boolean scrolled(int amount) {
+                return false;
+            }
+        });
+
 
         game.batch.end();
 
-        if(TimeUtils.nanoTime() - lastSpawnTime > 1000000000) {
+        if(TimeUtils.nanoTime() - lastSpawnTime > Math.max(250000000, 1000000000 - score * 10000000)) {
             Rectangle textbook = new Rectangle();
             textbook.x = MathUtils.random(0, SCREEN_WIDTH - 64);
             textbook.y = SCREEN_HEIGHT;
             textbook.width = TEXTBOOK_WIDTH;
             textbook.height = TEXTBOOK_HEIGHT;
             lastSpawnTime = TimeUtils.nanoTime();
-            long speed = score * 10 + MathUtils.random(150, 300);
+            long speed = score * 7 + MathUtils.random(150, 300);
             Textbook textbook1 = new Textbook(textbook, textbookTextures.get(MathUtils.random(0, textbookTextures.size() - 1)), speed);
             textbooks.add(textbook1);
         }
@@ -141,6 +204,7 @@ public class GameScreen implements Screen{
             }
             if (raindrop.overlaps(beer)) {
                 // TOOD: game over!
+                game.menuScreen.setUnlocked(score >= REQUIRED_SCORE, score);
                 game.setScreen(game.menuScreen);
                 break;
             }
