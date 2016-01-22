@@ -80,7 +80,15 @@ public class GameScreen implements Screen{
         beer.height = BEER_HEIGHT;
         textbookTextures = new ArrayList<Texture>();
         for (int i = 0; i < N_TEXTBOOKS; i++) {
-            textbookTextures.add(new Texture("textbooks/textbook" + i + ".jpg"));
+            try {
+                textbookTextures.add(new Texture("textbook" + i + ".jpg"));
+            } catch (Exception e) {
+                Gdx.app.error("ERROR", "Couldn't load texture " + i, e);
+            }
+        }
+        if (textbookTextures.size() != N_TEXTBOOKS) {
+            Gdx.app.error("ERROR", "COUDLNT LOAD TEXTBOOKS PROPERLY");
+            Gdx.app.exit();
         }
         textbooks = new Array<Textbook>();
     }
